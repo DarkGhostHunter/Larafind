@@ -4,16 +4,16 @@
 
 # Larafind
 
-Small utility to find PSR-4 classes from the base project path.
+Small utility to find PSR-4 classes from the base application path or project root.
 
 ```php
 use DarkGhostHunter\Larafind\Facades\Find;
 use Illuminate\Database\Eloquent\Scope;
 
-$classes = Find::implementing(Scope::class)->get();
+$classes = Find::path('Scopes')->implementing(Scope::class)->get();
 ```
 
-You can use this as a way to "auto-discover" classes a developer (or you) may have under a given directory. 
+You can use this as a way to "auto-discover" classes a developer (or you) may have under a given directory.
 
 ## Requirements
 
@@ -32,47 +32,50 @@ composer require darkghosthunter/larafind
 
 Use the `Find` facade to easy your development pain. The facade creates a "builder" of sorts that will return a list of all discovered PSR-4 compliant classes as a `ReflectionClass`.
 
-The `get()` method will return all the discovered files from the default `app` directory.
+By default, the Finder will use the default `app` directory, but you can use the `path()` method to look for a specific folder in your application path.
 
 ```php
 use DarkGhostHunter\Larafind\Facades\Find;
 
-$classes = Find::get();
+$classes = Find::path('Scopes')->get();
 ```
 
-### Directory travel
-
-By default, the Finder will use the default `app` directory, but you can use different directories using `dir()`.
+To look for other paths inside your project root, use the `basePath()` method. Note that Finder ensures the path you're using is autoloaded.
 
 ```php
 use DarkGhostHunter\Larafind\Facades\Find;
 
-$classes = Find::dir('foo/Bar', 'foo/Baz')->get();
+$classes = Find::basePath('app_foo/Scopes')->get();
 ```
-
-> Find uses your application root directory as starting point.
  
 ### Recursive
 
-The discovery is recursive, but you can make it non-recursive using `nonRecursive()`:
+The discovery is recursive, meaning, it will expand into child directories. You can make it non-recursive using `nonRecursive()`:
 
 ```php
 use DarkGhostHunter\Larafind\Facades\Find;
 
-$classes = Find::dir('foo/Bar', 'foo/Baz')->nonRecursive()->get();
+$classes = Find::path('Scopes')->nonRecursive()->get();
 ```
 
 ### Filtering
 
-The `Find` returns a Collection, so you can use the [`filter()`](https://laravel.com/docs/collections#method-filter) method to get only those classes that pass a truth test.
+The `Find` returns a Collection of items, so you can use the [`filter()`](https://laravel.com/docs/collections#method-filter) method to get only those classes that pass a truth test.
 
-To make things simpler, you can use some pre-filtering methods to avoid filtering after you get the collection:
+```php
+use DarkGhostHunter\Larafind\Facades\Find;
+
+$classes = Find::path('Scopes')->nonRecursive()->get()
+    ->filter(fn($class) => str_starts_with($class->name, 'Foo'));
+```
+
+To make things simpler, you can use some pre-filtering methods to avoid calling a filter manually after you get the collection:
 
 | Method | Description |
 |---|---|
 | `implementing()`  | Filter by implementing interfaces.
 | `extends()`       | Filter by extending class.
-| `uses()`          | Filter by used traits (recursive).
+| `uses()`          | Filter by used all traits.
 | `methods()`       | Filter by public methods.
 | `properties()`    | Filter by public properties.
 
@@ -90,8 +93,6 @@ $hasMethod = Find::methods('handle', 'terminate')->get();
 
 $hasProperties = Find::properties('service', 'model')->get();
 ```
-
-> Files that don't respect PSR-4 name conventions are discarded.
 
 ## License
 
