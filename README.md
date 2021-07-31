@@ -1,6 +1,6 @@
 ![Agence Olloweb - Unslash (UL) #d9ILr-dbEdg](https://images.unsplash.com/photo-1516382799247-87df95d790b7?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80&q=80&w=1280&h=400)
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/darkghosthunter/larafind.svg?style=flat-square)](https://packagist.org/packages/darkghosthunter/larafind) [![License](https://poser.pugx.org/darkghosthunter/larafind/license)](https://packagist.org/packages/darkghosthunter/larafind) ![](https://img.shields.io/packagist/php-v/darkghosthunter/larafind.svg) ![](https://github.com/DarkGhostHunter/Larafind/workflows/PHP%20Composer/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/DarkGhostHunter/Larafind/badge.svg?branch=master)](https://coveralls.io/github/DarkGhostHunter/Larafind?branch=master)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/darkghosthunter/larafind.svg?style=flat-square)](https://packagist.org/packages/darkghosthunter/larafind) [![License](https://poser.pugx.org/darkghosthunter/larafind/license)](https://packagist.org/packages/darkghosthunter/larafind) ![](https://img.shields.io/packagist/php-v/darkghosthunter/larafind.svg) ![](https://github.com/DarkGhostHunter/Larafind/workflows/Tests/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/DarkGhostHunter/Larafind/badge.svg?branch=master)](https://coveralls.io/github/DarkGhostHunter/Larafind?branch=master)
 
 # Larafind
 
