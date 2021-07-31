@@ -2,23 +2,25 @@
 
 namespace DarkGhostHunter\Larafind;
 
+use Composer\Autoload\ClassLoader;
 use Generator;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use ReflectionClass;
 use ReflectionException;
-use Symfony\Component\Finder\Finder as SymfonyFinder;
+use RuntimeException;
+use Symfony\Component\Finder\Finder as BaseFinder;
 use Symfony\Component\Finder\SplFileInfo;
 
 class Finder
 {
     /**
-     * The paths to explore for classes.
+     * Path to discover.
      *
-     * @var array|string[]
+     * @var string
      */
-    protected array $paths;
+    protected string $path;
 
     /**
      * If the exploring should expand to child directories.
@@ -40,49 +42,96 @@ class Finder
      * @param  \Illuminate\Contracts\Foundation\Application  $app
      * @param  \Symfony\Component\Finder\Finder  $finder
      */
-    public function __construct(protected Application $app, protected SymfonyFinder $finder)
+    public function __construct(protected Application $app, protected BaseFinder $finder)
     {
-        $this->paths = [$this->app->path()];
+        $this->path = $this->app->path();
     }
 
     /**
-     * Sets the directories to explore.
+     * Sets the application paths in the Finder.
      *
-     * @param  string  ...$dir
-     *
-     * @return $this
-     */
-    public function dir(string ...$dir): static
-    {
-        $this->paths = [];
-
-        return $this->addDir(...$dir);
-    }
-
-    /**
-     * Adds one or many paths to the exploring process.
-     *
-     * @param  string  ...$dir
+     * @param  string  $path
      *
      * @return $this
      */
-    public function addDir(string ...$dir): static
+    public function path(string $path): static
     {
-        $this->paths = array_merge($this->paths, $this->parsePaths($dir));
+        $this->path = $this->app->path($path);
 
         return $this;
     }
 
     /**
-     * Parses a path to the application base path.
+     * Sets the project paths from the root in the Finder.
      *
-     * @param  array  $paths
+     * @param  string  $path
      *
-     * @return array|string[]
+     * @return $this
      */
-    protected function parsePaths(array $paths): array
+    public function basePath(string $path): static
     {
-        return array_map([$this->app, 'basePath'], $paths);
+        $this->path = $this->parsePath($path);
+
+        return $this;
+    }
+
+    /**
+     * Parses a path from the project base path.
+     *
+     * @param  string  $path
+     *
+     * @return string
+     */
+    protected function parsePath(string $path): string
+    {
+        $psr4 = static::getPsr4Paths();
+
+        if (! Str::startsWith(trim($path, '/'), $this->app->path()) && ! $this->isAutoloaded($psr4, $path)) {
+            throw new RuntimeException("The files in [$path] are not registered for class autoloading.");
+        }
+
+        return $this->app->basePath($path);
+    }
+
+    /**
+     * Check if the path is autoloaded.
+     *
+     * @param  array  $psr4
+     * @param  string  $path
+     *
+     * @return bool
+     */
+    protected function isAutoloaded(array $psr4, string $path): bool
+    {
+        foreach ($psr4 as $autoloaded) {
+            if (Str::endsWith($autoloaded, Str::of($path)->before(DIRECTORY_SEPARATOR)->before('/'))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns the array of registered PSR-4 paths.
+     *
+     * @return array
+     */
+    protected static function getPsr4Paths(): array
+    {
+        $registered = [];
+        $i = 0;
+
+        foreach (ClassLoader::getRegisteredLoaders() as $loader) {
+            foreach ($loader->getPrefixesPsr4() as $paths) {
+                foreach ($paths as $path) {
+                    $registered[realpath($path)] = $i;
+                    ++$i;
+                }
+            }
+        }
+
+        return array_flip($registered);
     }
 
     /**
@@ -230,9 +279,9 @@ class Finder
      */
     protected function discoverFiles(): Generator
     {
-        $files = $this->finder->files()
-            ->in($this->paths)
-            ->filter(static fn(SplFileInfo $file): bool => $file->getExtension() === 'php');
+        $files = $this->finder->files()->in($this->path)->filter(
+            static fn(SplFileInfo $file): bool => $file->getExtension() === 'php'
+        );
 
         if (!$this->recursive) {
             $files->depth(0);

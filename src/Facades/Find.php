@@ -6,8 +6,8 @@ use DarkGhostHunter\Larafind\Finder;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static \DarkGhostHunter\Larafind\Finder dir(string ...$dir)
- * @method static \DarkGhostHunter\Larafind\Finder addDir(string ...$dir)
+ * @method static \DarkGhostHunter\Larafind\Finder path(string $path)
+ * @method static \DarkGhostHunter\Larafind\Finder basePath(string $path)
  * @method static \DarkGhostHunter\Larafind\Finder recursive(bool $recursive = true)
  * @method static \DarkGhostHunter\Larafind\Finder nonRecursive()
  * @method static \DarkGhostHunter\Larafind\Finder implementing(string ...$interfaces)

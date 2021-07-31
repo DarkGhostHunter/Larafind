@@ -3,9 +3,12 @@
 namespace Tests;
 
 use ArrayAccess;
+use Composer\Autoload\ClassLoader;
 use DarkGhostHunter\Larafind\Finder;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 use Serializable;
 
 class FinderTest extends TestCase
@@ -28,17 +31,7 @@ class FinderTest extends TestCase
 
         if (! $filesystem->exists($this->app->path('Discoverable'))) {
             $filesystem->copyDirectory(__DIR__.'/../stubs', $this->app->path('Discoverable'));
-
-            require_once $this->app->path('Discoverable/Traits.php');
-            require_once $this->app->path('Discoverable/Subdirectory/Traits.php');
-
-            foreach (
-                array_merge(
-                    glob($this->app->path('Discoverable/*.php')),
-                    glob($this->app->path('Discoverable/Subdirectory/*.php')),
-                ) as $file) {
-                require_once $file;
-            }
+            Arr::first(ClassLoader::getRegisteredLoaders())->addPsr4('App\\', $this->app->path());
         }
 
         $this->finder = $this->app[Finder::class];
@@ -57,26 +50,13 @@ class FinderTest extends TestCase
         static::assertTrue($files->has('App\Discoverable\Subdirectory\Implementing'));
     }
 
-    public function test_changes_directory(): void
+    public function test_finds_all_files_in_app(): void
     {
-        $files = $this->finder->dir('app/Discoverable/Subdirectory')->get();
-
-        static::assertCount(4, $files);
-        static::assertFalse($files->has('App\Discoverable\Extending'));
-        static::assertTrue($files->has('App\Discoverable\Subdirectory\Extending'));
-        static::assertFalse($files->has('App\Discoverable\NormalClass'));
-        static::assertTrue($files->has('App\Discoverable\Subdirectory\NormalClass'));
-        static::assertFalse($files->has('App\Discoverable\Implementing'));
-        static::assertTrue($files->has('App\Discoverable\Subdirectory\Implementing'));
-    }
-
-    public function test_adds_directory(): void
-    {
-        $files = $this->finder->nonRecursive()
-            ->dir('app/Discoverable')
-            ->addDir('app/Discoverable/Subdirectory')->get();
+        $files = $this->finder->path('Discoverable')->get();
 
         static::assertCount(8, $files);
+        static::assertTrue($files->has('App\Discoverable\ClassUsing'));
+        static::assertTrue($files->has('App\Discoverable\Subdirectory\ClassUsing'));
         static::assertTrue($files->has('App\Discoverable\Extending'));
         static::assertTrue($files->has('App\Discoverable\Subdirectory\Extending'));
         static::assertTrue($files->has('App\Discoverable\NormalClass'));
@@ -85,10 +65,49 @@ class FinderTest extends TestCase
         static::assertTrue($files->has('App\Discoverable\Subdirectory\Implementing'));
     }
 
-    public function test_doesnt_get_all_files_recursively(): void
+    public function test_finds_all_files_in_app_not_recursive(): void
     {
-        static::assertEmpty($this->finder->nonRecursive()->get());
-        static::assertCount(4, $this->finder->dir('app/Discoverable')->nonRecursive()->get());
+        $files = $this->finder->path('Discoverable')->nonRecursive()->get();
+
+        static::assertCount(4, $files);
+        static::assertTrue($files->has('App\Discoverable\ClassUsing'));
+        static::assertTrue($files->has('App\Discoverable\Extending'));
+        static::assertTrue($files->has('App\Discoverable\NormalClass'));
+        static::assertTrue($files->has('App\Discoverable\Implementing'));
+    }
+
+    public function test_finds_all_files_in_project_directory(): void
+    {
+        $files = $this->finder->basePath('app/Discoverable')->get();
+
+        static::assertCount(8, $files);
+        static::assertTrue($files->has('App\Discoverable\ClassUsing'));
+        static::assertTrue($files->has('App\Discoverable\Subdirectory\ClassUsing'));
+        static::assertTrue($files->has('App\Discoverable\Extending'));
+        static::assertTrue($files->has('App\Discoverable\Subdirectory\Extending'));
+        static::assertTrue($files->has('App\Discoverable\NormalClass'));
+        static::assertTrue($files->has('App\Discoverable\Subdirectory\NormalClass'));
+        static::assertTrue($files->has('App\Discoverable\Implementing'));
+        static::assertTrue($files->has('App\Discoverable\Subdirectory\Implementing'));
+    }
+
+    public function test_finds_all_files_in_project_directory_non_recursive(): void
+    {
+        $files = $this->finder->basePath('app/Discoverable')->nonRecursive()->get();
+
+        static::assertCount(4, $files);
+        static::assertTrue($files->has('App\Discoverable\ClassUsing'));
+        static::assertTrue($files->has('App\Discoverable\Extending'));
+        static::assertTrue($files->has('App\Discoverable\NormalClass'));
+        static::assertTrue($files->has('App\Discoverable\Implementing'));
+    }
+
+    public function test_exception_when_looking_into_not_autoload_dir(): void
+    {
+        $this->expectExceptionMessage('The files in [storage] are not registered for class autoloading.');
+        $this->expectException(RuntimeException::class);
+
+        $this->finder->basePath('storage')->get();
     }
 
     public function test_filters_by_interfaces(): void
@@ -98,7 +117,7 @@ class FinderTest extends TestCase
         static::assertCount(1, $this->finder->implementing(Serializable::class, ArrayAccess::class)->get());
     }
 
-    public function test_filers_by_extend(): void
+    public function test_filters_by_extend(): void
     {
         static::assertCount(2, $this->finder->extending(ServiceProvider::class)->get());
     }
